@@ -71,7 +71,14 @@ jobs:
           ./scripts/feeds install -a -f -p passwall_packages
           ./scripts/feeds install -a -f -p passwall
           ./scripts/feeds install -a
-
+          if [ -f feeds/packages/utils/containerd/Makefile ]; then
+            sed -i 's/BUILDTAGS=/EXTRA_LDFLAGS="-checklinkname=0" BUILDTAGS=/g' feeds/packages/utils/containerd/Makefile
+            grep -n 'checklinkname' feeds/packages/utils/containerd/Makefile || true
+          fi
+          if [ -f feeds/packages/utils/dockerd/Makefile ]; then
+            sed -i 's/DOCKER_BUILDTAGS=/LDFLAGS="-checklinkname=0" DOCKER_BUILDTAGS=/g' feeds/packages/utils/dockerd/Makefile
+            grep -n 'checklinkname' feeds/packages/utils/dockerd/Makefile || true
+          fi
       - name: Load MT7988+MT7992 base defconfig and apply custom config
         working-directory: openwrt
         env:
