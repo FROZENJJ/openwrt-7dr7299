@@ -6,7 +6,7 @@ on:
       lan_ip:
         description: '默认后台管理 IP'
         required: false
-        default: '192.168.6.1'
+        default: '10.0.1.1'
       include_docker:
         description: '是否集成 Docker (dockerd + dockerman)'
         required: false
@@ -73,7 +73,7 @@ jobs:
       - name: Load MT7988+MT7992 base defconfig and apply custom config
         working-directory: openwrt
         env:
-          LAN_IP: ${{ inputs.lan_ip || '192.168.6.1' }}
+          LAN_IP: ${{ inputs.lan_ip || '10.0.1.1' }}
           INCLUDE_DOCKER: ${{ inputs.include_docker }}
         run: |
           # 自动匹配 padavanonly 仓库内置的 MT7988 + MT7992 闭源基线配置
@@ -142,6 +142,6 @@ jobs:
           name: "TP-Link 7DR7299 闭源 Wi-Fi 固件 (${{ steps.organize.outputs.tag }})"
           body: |
             - 源码：`padavanonly/immortalwrt-mt798x-6.6` (`mt798x-mt799x-6.6-mtwifi`)
-            - 默认后台地址：`http://${{ inputs.lan_ip || '192.168.6.1' }}`（用户名 `root`，默认无密码）
+            - 默认后台地址：`http://${{ inputs.lan_ip || '10.0.1.1' }}`（用户名 `root`，默认无密码）
             - 内置核心功能：闭源 `mtwifi`、HNAT/WED + 全锥形 NAT、PPPoE + IPv6 + UPnP、`ddns-go`、EasyTier (`kmod-tun`)、PassWall (Xray)、SmartDNS、USB 3.0 存储 (`ext4`/`exfat`/`ntfs3`)、Samba4、DiskMan、Docker (`dockerd` + `dockerman`)
           files: release_files/*
