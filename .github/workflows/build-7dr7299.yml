@@ -101,6 +101,8 @@ jobs:
             sed -i '/^CONFIG_TARGET_mediatek_filogic_a73_DEVICE_/d' .config
             sed -i '/^CONFIG_TARGET_MULTI_PROFILE=/d' .config
             sed -i '/^CONFIG_TARGET_PER_DEVICE_ROOTFS=/d' .config
+            sed -i '/^CONFIG_PACKAGE_libustream-mbedtls=/d' .config
+            sed -i '/^CONFIG_PACKAGE_luci-ssl=/d' .config
           else
             echo "No mt7988 defconfig found, starting from clean custom config"
             : > .config
@@ -118,7 +120,7 @@ jobs:
 
           make defconfig
           echo "=== Verifying key selected packages ==="
-          grep -E 'tplink_tl-7dr7299-v1|mtwifi|mt7992|mt7990|turboacc|fullcone|passwall|xray|smartdns|ddns-go|easytier|kmod-tun|dockerd|dockerman|diskman|samba4|upnp' .config || true
+          grep -E 'libustream|tplink_tl-7dr7299-v1|mtwifi|mt7992|mt7990|turboacc|fullcone|passwall|xray|smartdns|ddns-go|easytier|kmod-tun|dockerd|dockerman|diskman|samba4|upnp' .config || true
 
       - name: Download source packages
         working-directory: openwrt
