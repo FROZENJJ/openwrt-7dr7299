@@ -1,0 +1,151 @@
+name: Build TP-Link 7DR7299 No-Docker (USB Docker Kernel Ready)
+
+on:
+  workflow_dispatch:
+    inputs:
+      lan_ip:
+        description: '默认后台管理 IP'
+        required: false
+        default: '10.0.1.1'
+      release_tag:
+        description: 'Release 标签名'
+        required: false
+        default: 'no-docker'
+
+permissions:
+  contents: write
+
+env:
+  REPO_URL: https://github.com/padavanonly/immortalwrt-mt798x-6.6.git
+  REPO_BRANCH: mt798x-mt799x-6.6-mtwifi
+  TZ: Asia/Shanghai
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Free up runner disk space
+        run: |
+          df -h
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /opt/hostedtoolcache/CodeQL
+          sudo docker image prune --all --force || true
+          df -h
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y \
+            ack antlr3 asciidoc autoconf automake autopoint binutils bison build-essential \
+            bzip2 ccache clang cmake cpio curl device-tree-compiler ecj fastjar flex gawk \
+            gettext gcc-multilib g++-multilib git gnutls-dev gperf haveged help2man intltool \
+            lib32gcc-s1 libc6-dev-i386 libelf-dev libglib2.0-dev libgmp3-dev libltdl-dev \
+            libmpc-dev libmpfr-dev libncurses-dev libpython3-dev libreadline-dev libssl-dev \
+            libtool libyaml-dev libz-dev lld llvm lrzsz mkisofs msmtp nano ninja-build \
+            p7zip p7zip-full patch pkgconf python3 python3-pip python3-ply python3-docutils \
+            python3-pyelftools qemu-utils re2c rsync scons squashfs-tools subversion swig \
+            texinfo uglifyjs upx-ucl unzip vim wget xmlto xxd zlib1g-dev zstd
+
+      - name: Clone ImmortalWrt MT798x 6.6 closed-source WiFi repo
+        run: |
+          git clone --depth=1 -b "$REPO_BRANCH" "$REPO_URL" openwrt
+          cd openwrt
+          git log -1 --oneline
+
+      - name: Run diy-part1 (add PassWall & EasyTier feeds)
+        working-directory: openwrt
+        run: |
+          chmod +x "$GITHUB_WORKSPACE/scripts/diy-part1.sh"
+          "$GITHUB_WORKSPACE/scripts/diy-part1.sh"
+
+      - name: Update and install feeds
+        working-directory: openwrt
+        run: |
+          ./scripts/feeds update -a
+          rm -rf feeds/packages/lang/golang
+          git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 27.x feeds/packages/lang/golang
+          ./scripts/feeds install -a -f -p passwall_packages
+          ./scripts/feeds install -a -f -p passwall
+          ./scripts/feeds install -a
+
+      - name: Load MT7988+MT7992 base defconfig and apply no-docker config
+        working-directory: openwrt
+        env:
+          LAN_IP: ${{ inputs.lan_ip || '10.0.1.1' }}
+        run: |
+          BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*7dr7299*' | sort | head -n 1 || true)
+          if [ -z "$BASE_DEFCONFIG" ]; then
+            BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*mt7988*mt7992*' | sort | head -n 1 || true)
+          fi
+          if [ -z "$BASE_DEFCONFIG" ]; then
+            BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*mt7988*' | sort | head -n 1 || true)
+          fi
+
+          if [ -n "$BASE_DEFCONFIG" ]; then
+            echo "Using base defconfig: $BASE_DEFCONFIG"
+            cp -f "$BASE_DEFCONFIG" .config
+            sed -i '/^CONFIG_TARGET_DEVICE_/d' .config
+            sed -i '/^CONFIG_TARGET_mediatek_filogic_a73_DEVICE_/d' .config
+            sed -i '/^CONFIG_TARGET_MULTI_PROFILE=/d' .config
+            sed -i '/^CONFIG_TARGET_PER_DEVICE_ROOTFS=/d' .config
+            sed -i '/^CONFIG_PACKAGE_libustream-mbedtls=/d' .config
+            sed -i '/^CONFIG_PACKAGE_luci-ssl=/d' .config
+          else
+            echo "No mt7988 defconfig found, starting from clean custom config"
+            : > .config
+          fi
+
+          cat "$GITHUB_WORKSPACE/configs/7dr7299-no-docker.config" >> .config
+
+          chmod +x "$GITHUB_WORKSPACE/scripts/diy-part2.sh"
+          "$GITHUB_WORKSPACE/scripts/diy-part2.sh" "$LAN_IP"
+
+          make defconfig
+          echo "=== Verifying key selected packages ==="
+          grep -E 'tplink_tl-7dr7299-v1|mt7992|mt7990|libustream|mtwifi|turboacc|fullcone|passwall|xray|smartdns|ddns-go|easytier|kmod-tun|cgroupfs|kmod-veth|kmod-fs-overlay|diskman|samba4|upnp|docker' .config || true
+
+      - name: Download source packages
+        working-directory: openwrt
+        run: |
+          make download -j8
+          find dl -size -1024c -exec ls -l {} \;
+          find dl -size -1024c -exec rm -f {} \;
+
+      - name: Compile firmware
+        working-directory: openwrt
+        run: |
+          echo "Compiling with $(nproc) threads..."
+          make -j$(nproc) || make -j1 V=s
+
+      - name: Organize output firmware
+        id: organize
+        working-directory: openwrt
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag || 'no-docker' }}
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/release_files"
+          find bin/targets/mediatek -type f \( -name '*7dr7299*' -o -name 'sha256sums' -o -name 'config.buildinfo' \) -exec cp -v {} "$GITHUB_WORKSPACE/release_files/" \;
+          ls -lh "$GITHUB_WORKSPACE/release_files/"
+          echo "tag=${RELEASE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: 7dr7299-no-docker-firmware
+          path: release_files/
+          retention-days: 14
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.organize.outputs.tag }}
+          name: "TP-Link 7DR7299 闭源 Wi-Fi 固件 - No Docker (${{ steps.organize.outputs.tag }})"
+          body: |
+            - 源码：`padavanonly/immortalwrt-mt798x-6.6` (`mt798x-mt799x-6.6-mtwifi`)
+            - 默认后台地址：`http://${{ inputs.lan_ip || '10.0.1.1' }}`（用户名 `root`，初始密码 `password`，主机名 `DIOsOpenwrt`，DHCP `10.0.1.20` 起）
+            - 内置功能：闭源 `mtwifi` (MT7992)、HNAT/WED + 全锥形 NAT、PPPoE + IPv6 + UPnP、`ddns-go`、EasyTier (`easytier-noweb` + `kmod-tun`)、PassWall (Xray)、SmartDNS、Argon 主题、USB 3.0 存储 (`ext4`/`exfat`/`ntfs3`)、DiskMan、Samba4
+            - Docker 支持：仅保留内核模块与 cgroup/namespace 支持（不含大体积 `dockerd`/`containerd`/`runc`），后续可直接将 Docker 程序与镜像放至外接 USB `ext4` 分区运行
+          files: release_files/*
