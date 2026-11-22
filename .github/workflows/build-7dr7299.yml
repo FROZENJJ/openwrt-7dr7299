@@ -67,7 +67,7 @@ jobs:
         run: |
           ./scripts/feeds update -a
           rm -rf feeds/packages/lang/golang
-          git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 26.x feeds/packages/lang/golang
+          git clone --depth=1 https://github.com/sbwml/packages_lang_golang -b 27.x feeds/packages/lang/golang
           ./scripts/feeds install -a -f -p passwall_packages
           ./scripts/feeds install -a -f -p passwall
           ./scripts/feeds install -a
@@ -79,7 +79,13 @@ jobs:
           INCLUDE_DOCKER: ${{ inputs.include_docker }}
         run: |
           # 自动匹配 padavanonly 仓库内置的 MT7988 + MT7992 闭源基线配置
-          BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f \( -iname '*7dr7299*' -o -iname '*mt7988*mt7992*' -o -iname '*mt7988*' \) | sort | head -n 1 || true)
+          BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*7dr7299*' | sort | head -n 1 || true)
+          if [ -z "$BASE_DEFCONFIG" ]; then
+            BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*mt7988*mt7992*' | sort | head -n 1 || true)
+            fi
+          if [ -z "$BASE_DEFCONFIG" ]; then
+              BASE_DEFCONFIG=$(find defconfig -maxdepth 1 -type f -iname '*mt7988*' | sort | head -n 1 || true)
+            fi
           if [ -n "$BASE_DEFCONFIG" ]; then
             echo "Using base defconfig: $BASE_DEFCONFIG"
             cp -f "$BASE_DEFCONFIG" .config
@@ -105,7 +111,7 @@ jobs:
 
           make defconfig
           echo "=== Verifying key selected packages ==="
-          grep -E 'tplink_tl-7dr7299-v1|mtwifi|turboacc|fullcone|passwall|xray|smartdns|ddns-go|easytier|kmod-tun|dockerd|dockerman|diskman|samba4|upnp' .config || true
+          grep -E 'tplink_tl-7dr7299-v1|mtwifi|mt7992|mt7990|turboacc|fullcone|passwall|xray|smartdns|ddns-go|easytier|kmod-tun|dockerd|dockerman|diskman|samba4|upnp' .config || true
 
       - name: Download source packages
         working-directory: openwrt
