@@ -1,53 +1,54 @@
-# TP-Link TL-7DR7299 (v1) 闭源 Wi-Fi 固件云编译包
+# TP-Link TL-7DR7299 v1 固件
 
-本配置包基于 [padavanonly/immortalwrt-mt798x-6.6](https://github.com/padavanonly/immortalwrt-mt798x-6.6) 的 `mt798x-mt799x-6.6-mtwifi` 分支，专为 **TP-Link TL-7DR7299 (v1)** 定制，适合通过 **GitHub Actions** 免费一键云编译。
+适用于 **TP-Link TL-7DR7299 硬件 v1**，保留 MediaTek MT7992 闭源 Wi‑Fi 驱动。日常使用选 **6.6**。已有第三方 U‑Boot、能够恢复固件并愿意验证网口和无线，再考虑 **6.12 预览版**。
 
-## 内置功能一览
+## 选哪个版本
 
-* **无线与加速**：MediaTek 闭源 `mtwifi` 驱动 + TurboACC（HNAT/WED 硬件加速与全锥形 NAT）
-* **基础网络**：PPPoE 拨号（适配 2000M 宽带）、完整 IPv6、UPnP
-* **后台界面**：Vantage 主题和简体中文仪表盘，显示网络路径、客户端和吞吐量。附带计划任务、内核参数、软件包管理、`nano` 和 `htop`。可在 LuCI 的「系统 → 语言和界面」切回 Bootstrap。
-* **核心插件**：
-  * **阿里云 DDNS**：`ddns-go` (`luci-app-ddns-go`)
-  * **科学上网**：[PassWall](https://github.com/Openwrt-Passwall/openwrt-passwall)（仅保留 **Xray** 核心，精简体积）+ `dnsmasq-full` + `kmod-nft-tproxy`
-  * **DNS 加速**：[SmartDNS](https://github.com/pymumu/smartdns)
-  * **内网测速**：FastNet，包含网页测速服务和 LuCI 设置页。
-* **USB 3.0**：USB 3.0 / UAS 驱动、`ext4` / `exFAT` / `NTFS3`、DiskMan 和 Samba4。Docker 程序为可选构建项。
+| 版本 | 适合谁 | 无线与网络 | 下载 |
+| --- | --- | --- | --- |
+| **Linux 6.6.94 · 日用版** | 首次安装本项目固件，或用作家里唯一一台主路由 | ImmortalWrt 24.10 系列，MT7992 闭源驱动，RTL837x 使用 swconfig | [6.6 日用版 · 60.38 MiB](https://github.com/FROZENJJ/openwrt-7dr7299/releases/tag/6.6.94-vantage-no-docker-20261124) |
+| **Linux 6.12.116 · 预览版** | 想测试 25.12 软件环境或 DSA 网口配置，有条件恢复 6.6 | ImmortalWrt 25.12-SNAPSHOT，MT7992 闭源驱动，RTL837x 使用 DSA | [6.12 预览版 · 55.24 MiB](https://github.com/FROZENJJ/openwrt-7dr7299/releases/tag/6.12.116-vantage-no-docker-preview-20261124) |
 
-## 一、GitHub Actions 云编译步骤
+表中体积为 sysupgrade 镜像大小。6.12 沿用该机型的 NAND 分区和无线校准位置，已完成构建及镜像校验。启动、WAN/LAN、SFP、Wi‑Fi 和硬件转发仍待真机验证，因此以 GitHub **Pre-release** 发布。
 
-1. 在 GitHub 上新建一个**空白仓库**（公开或私有均可，例如 `openwrt-7dr7299`）。
-2. 解压本压缩包，将里面的 `.github/`、`configs/`、`scripts/` 和 `README.md` 推送（或通过网页 Upload files）到仓库根目录。
-   * 注意：若使用网页上传，`.github/workflows/build-7dr7299.yml` 需要在网页手动建目录或直接用 `git push` 推送（推荐用 `git push`，不会漏掉隐藏目录 `.github`）。
-3. 进入仓库 **Settings → Actions → General → Workflow permissions**，勾选 **Read and write permissions** 并保存（用于自动发布 Release）。
-4. 进入 **Actions** 并运行 **Build TP-Link 7DR7299 No-Docker (USB Docker Kernel Ready)**。默认后台 IP 为 `10.0.1.1`，默认发布标签为 `6.6-vantage-no-docker`。
-5. 构建和检查通过后，在 **Releases** 下载 `immortalwrt-mediatek-filogic_a73-tplink_tl-7dr7299-v1-squashfs-sysupgrade.itb`。
+## 下载和升级
 
-### 镜像体积
+1. 看机身标签，确认型号是 **TL-7DR7299 v1**，并确认已装与该机型匹配的第三方 U‑Boot。原厂固件需要先走对应的过渡和引导安装流程。 [7DR7299 刷机教程](https://mao.fan/article/582)
+2. 在选定版本的 **Assets** 中下载文件名包含 `tplink_tl-7dr7299-v1` 且以 `squashfs-sysupgrade.itb` 结尾的镜像，用同页 `sha256sums` 核对。Windows 可运行 `Get-FileHash .\文件名 -Algorithm SHA256`。
+3. 备份当前配置和可用固件，通过网线进入 LuCI 的「系统 → 备份与升级」上传镜像。**在 6.6 和 6.12 间切换时取消保留配置**，刷好后重新配置 WAN、VLAN 和 Wi‑Fi。遇到机型或镜像校验失败时停止升级。
+4. 干净启动后从 LAN 打开 `http://10.0.1.1`，用户名为 `root`。本页链接的 6.6 日用版初始密码为 `password`，登录后立即更改。6.12 预览版首次登录使用空密码，接上 WAN 前在 LuCI 设置密码。
 
-TL‑7DR7299 v1 有 128 MiB NAND，设备树分给 UBI 的空间为 119.5 MiB。两个工作流都将 sysupgrade 文件限制在 **96 MiB**，为 UBI 开销、坏块和可写空间留出余量。构建还会检查闭源无线、Vantage、FastNet 等软件包是否出现在清单里，以及镜像里是否误带 EasyTier。镜像缺失、超限或清单不符时，工作流停止上传。
+`initramfs-recovery.itb` 用于具备相应功能的第三方 U‑Boot 启动恢复系统，具体入口以所装 U‑Boot 为准。日常升级用 `squashfs-sysupgrade.itb`，预览测试前确认能进入恢复界面并备好 6.6 镜像。项目按 **128 MiB NAND、119.5 MiB UBI** 布局构建，发布时限制 sysupgrade 镜像不超过 **96 MiB**。
 
-## 二、刷机前提提醒
+## 后台和插件
 
-* 若当前还是原厂固件，需先按社区免拆教程走完：`官方固件 → debug 固件 → OpenWrt 过渡固件 → 刷入第三方 BL2 与 U-Boot（FIP）`（参考[猫点饭 7DR7299 教程](https://mao.fan/article/582)）。
-* 本机已安装第三方 U-Boot。正在使用此系列 6.6 固件时，备份后可从 ImmortalWrt 的「系统 → 备份与升级」上传 `squashfs-sysupgrade.itb`。
+- 两个版本的无 Docker 配方均包含 Vantage 主题、中文状态仪表盘、计划任务和内核参数页面。可在「系统 → 语言和界面」切换 Bootstrap。两版也内置 PassWall（Xray）、SmartDNS、DDNS‑Go、UPnP、DiskMan 和 Samba4。
+- 在「服务 → FastNet」启动内网测速，网页默认地址为 `http://10.0.1.1:3200/webui/`。用 FastNet 比较局域网吞吐，用无线状态页的 RSSI（dBm）比较信号强度。
+- 两版均预留同批编译的 `kmod-tun`，EasyTier 可另外安装。核对 IPK 依赖和 `/overlay` 可用空间后，在 LuCI 的软件包页面先上传 `easytier`，再上传 `luci-app-easytier`。 [EasyTier 官方 LuCI 下载](https://github.com/EasyTier/luci-app-easytier/releases)
+- **6.6** 使用 `opkg` 和 ImmortalWrt 24.10 用户态软件源。**6.12** 保留 `opkg`，可以逐包安装依赖匹配的 `aarch64_cortex-a53` 或 `all` IPK。Kiddin9 25.12 有对应架构的包，当前索引没提供 `Packages.sig`，预览版默认未启用该源。普通 LuCI 插件也要核对依赖，内核模块只能用本固件同次编译的包。 [Kiddin9 25.12 软件包目录](https://dl.openwrt.ai/releases/25.12/packages/aarch64_cortex-a53/kiddin9/)
 
-## 三、刷机后关键配置要点
+## 自行编译
 
-1. **2000M 宽带与 8 网口当交换机**
-   * 将光猫 2.5G/10G 口接到 7DR7299 的 10G 口或 2.5G 口作 WAN 口拨号；其余网口留在 `br-lan` 网桥即可作为交换机使用。
-   * 若有多台高速内网设备（如 NAS），优先接入空闲的 **10G 口**。
-2. **USB 挂载与 Docker 目录迁移**
-   * 在「系统 → 磁盘管理（DiskMan）」中将外接 USB SSD/高耐用 U 盘格式化为 **`ext4`**，在「挂载点」挂载到 `/mnt/sda1`。
-   * 在「Docker → 配置」中将 **Docker 根目录（`data-root`）** 改为 `/mnt/sda1/docker`，保存并重启 `dockerd`，确认镜像不占用板载 128MB 闪存。
-   * 后续如需部署 AdGuardHome，直接在 Docker 中以 `host` 网络模式运行即可。
-3. **PassWall + SmartDNS 配合**
-   * 建议让 SmartDNS 监听独立端口（如 `6053`）专门做国内 DNS 测速解析，在 PassWall 中将国内 DNS 指向 `127.0.0.1#6053`，国外域名交由 PassWall/Xray 分流解析，避免 DNS 环路。
-4. **FastNet 内网测速**
-   * 在「服务 → FastNet」打开网页，或在局域网客户端访问 `http://路由器IP:3200/webui/`。测速值是客户端到路由器的实际吞吐。对比 Wi‑Fi 信号时，同时记录闭源无线状态里的 RSSI，并使用相同信道、带宽和摆位。
+- **6.6**　Fork 本仓库，在自己的 Actions 页面手动运行 `Build TP-Link 7DR7299 No-Docker (USB Docker Kernel Ready)`。源码来自 [padavanonly 的 6.6 分支](https://github.com/padavanonly/immortalwrt-mt798x-6.6/tree/mt798x-mt799x-6.6-mtwifi)。
+- **6.12**　使用 Ubuntu 或 WSL2 的 Linux 文件系统，把本仓库与 OpenWrt 源码分别存放。进入固定提交的底座源码目录，依次执行下面的命令。 [6.12 Wi‑Fi 7 底座](https://github.com/chasey-dev/immortalwrt-mt798x-rebase/tree/dca94685cd73309b9902b1976aab4b2deccf86eb) · [TL-7DR7299 v1 板级移植](https://github.com/coolsnowwolf/lede/commit/1d585dc90248b09ff61358e504edf2a302d3493a)
 
-## 四、软件源与 EasyTier 后装
+```sh
+# 在两个工作目录的共同父目录执行
+git clone https://github.com/FROZENJJ/openwrt-7dr7299.git firmware-7dr7299
+git init openwrt-6.12
+git -C openwrt-6.12 fetch --depth=1 \
+  https://github.com/chasey-dev/immortalwrt-mt798x-rebase.git \
+  dca94685cd73309b9902b1976aab4b2deccf86eb
+git -C openwrt-6.12 checkout --detach FETCH_HEAD
+cd openwrt-6.12
+bash ../firmware-7dr7299/scripts/diy-part1.sh
+./scripts/feeds update -a
+./scripts/feeds install -a
+bash ../firmware-7dr7299/scripts/prepare-6.12.sh
+make defconfig
+make download -j8
+make -j6
+bash ../firmware-7dr7299/scripts/verify-firmware.sh 6.12
+```
 
-此固件使用 ImmortalWrt 24.10 系列的 `aarch64_cortex-a53` 用户态软件源和 `opkg`。ImmortalWrt 下载站未提供此自编译 `filogic_a73` 的目标专用索引，启动时会清理这两条失效条目。内核模块使用本固件同批产物。Kiddin9 的 24.10 在线索引目前返回 404，FastNet、计划任务和内核参数从固定的 Kiddin9 源码版本随本固件构建。 [ImmortalWrt 软件源](https://downloads.immortalwrt.org/releases/24.10-SNAPSHOT/packages/aarch64_cortex-a53/) · [Kiddin9 24.10 索引](https://dl.openwrt.ai/packages-24.10/aarch64_cortex-a53/kiddin9/Packages.gz) · [Kiddin9 插件源码](https://github.com/kiddin9/op-packages/tree/bb5f83e9b993c05a0ba7ebabc4bb4540b4363a52)
-
-EasyTier 预留同批编译的 `kmod-tun`。如需安装，在电脑上解开 EasyTier 官方发布的 `EasyTier-v2.6.4-aarch64_cortex-a53-22.03.7.zip`，通过 LuCI「系统 → 软件包 → 上传软件包」先安装 `easytier_2.6.4_aarch64_cortex-a53.ipk`，再安装 `luci-app-easytier_2.6.4_all.ipk`。两包的架构和声明依赖已核对，安装前先检查可写空间，服务运行效果以真机为准。 [EasyTier v2.6.4 发布页](https://github.com/EasyTier/luci-app-easytier/releases/tag/v2.6.4)
+6.12 产物在 `bin/targets/mediatek/filogic/`。Release 附带软件包清单、构建配置信息和 SHA‑256 校验值，便于比对不同次构建。

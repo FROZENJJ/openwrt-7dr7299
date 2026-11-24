@@ -1,0 +1,16 @@
+The MediaTek 6.12 tree backports the phylink PCS callback with a neg_mode
+argument. Use that signature for this build regardless of the kernel version.
+
+--- a/src/rtl8372n.c
++++ b/src/rtl8372n.c
+@@ -551,8 +551,3 @@
+-#if LINUX_VERSION_CODE >= KERNEL_VERSION(6,18,0)
+-static void rtl8372n_sds_pcs_get_state(struct phylink_pcs *pcs, unsigned int neg_mode,
+-				 struct phylink_link_state *state)
+-#else
+-static void rtl8372n_sds_pcs_get_state(struct phylink_pcs *pcs,
+-				 struct phylink_link_state *state)
+-#endif
++static void rtl8372n_sds_pcs_get_state(struct phylink_pcs *pcs, unsigned int neg_mode,
++				 struct phylink_link_state *state)
+ {
