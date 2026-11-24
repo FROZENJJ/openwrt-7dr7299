@@ -22,9 +22,14 @@ uci set dhcp.lan.start='20'
 uci set dhcp.lan.limit='200'
 uci commit dhcp
 
+# 自编译 filogic_a73 在 ImmortalWrt 下载站没有对应的目标专用索引。
+if [ -f /etc/opkg/distfeeds.conf ]; then
+  sed -i '\|^src/gz [^ ]* https://downloads\.immortalwrt\.org/releases/24\.10-SNAPSHOT/targets/mediatek/filogic_a73/|d' /etc/opkg/distfeeds.conf
+fi
+
 uci set luci.main.lang='zh_cn'
-if [ -d /www/luci-static/argon ]; then
-  uci set luci.main.mediaurlbase='/luci-static/argon'
+if [ -d /www/luci-static/vantage ]; then
+  uci set luci.main.mediaurlbase='/luci-static/vantage'
 fi
 uci commit luci
 

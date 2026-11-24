@@ -10,7 +10,7 @@ on:
       include_docker:
         description: '是否集成 Docker (dockerd + dockerman)'
         required: false
-        default: true
+        default: false
         type: boolean
 
 permissions:
@@ -56,7 +56,7 @@ jobs:
           cd openwrt
           git log -1 --oneline
 
-      - name: Run diy-part1 (add PassWall & EasyTier feeds)
+      - name: Add PassWall feed, Vantage and selected Kiddin9 packages
         working-directory: openwrt
         run: |
           chmod +x "$GITHUB_WORKSPACE/scripts/diy-part1.sh"
@@ -139,6 +139,7 @@ jobs:
         id: organize
         working-directory: openwrt
         run: |
+          bash "$GITHUB_WORKSPACE/scripts/verify-firmware.sh"
           mkdir -p "$GITHUB_WORKSPACE/release_files"
           find bin/targets/mediatek -type f \( -name '*7dr7299*' -o -name 'sha256sums' -o -name 'config.buildinfo' \) -exec cp -v {} "$GITHUB_WORKSPACE/release_files/" \;
           ls -lh "$GITHUB_WORKSPACE/release_files/"
@@ -159,6 +160,7 @@ jobs:
           name: "TP-Link 7DR7299 闭源 Wi-Fi 固件 (${{ steps.organize.outputs.tag }})"
           body: |
             - 源码：`padavanonly/immortalwrt-mt798x-6.6` (`mt798x-mt799x-6.6-mtwifi`)
-            - 默认后台地址：`http://${{ inputs.lan_ip || '10.0.1.1' }}`（用户名 `root`，默认无密码）
-            - 内置核心功能：闭源 `mtwifi`、HNAT/WED + 全锥形 NAT、PPPoE + IPv6 + UPnP、`ddns-go`、EasyTier (`kmod-tun`)、PassWall (Xray)、SmartDNS、USB 3.0 存储 (`ext4`/`exfat`/`ntfs3`)、Samba4、DiskMan、Docker (`dockerd` + `dockerman`)
+            - 默认后台地址：`http://${{ inputs.lan_ip || '10.0.1.1' }}`（用户名 `root`，初始密码 `password`）
+            - 内置核心功能：闭源 `mtwifi` (MT7992)、HNAT/WED + 全锥形 NAT、PPPoE + IPv6 + UPnP、`ddns-go`、PassWall (Xray)、SmartDNS、Vantage 主题与中文仪表盘、FastNet 网页测速、计划任务、内核参数、USB 3.0 存储、DiskMan、Samba4
+            - Docker 为可选构建项。EasyTier 可后装，固件预留同批编译的 `kmod-tun`。sysupgrade 镜像上限为 96 MiB。
           files: release_files/*
